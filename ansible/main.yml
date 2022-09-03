@@ -1,0 +1,70 @@
+---
+- name: Get Script running on the server
+  hosts: all
+  tasks:
+  - wait_for_connection:
+     timeout: 5
+    register: ssh_conn
+    ignore_errors: yes
+    ignore_unreachable: yes
+
+  - name: Debug SSH Connection
+    debug: var=ssh_conn
+
+  - name: Archives the files and folders
+    become: yes
+    become_user: root
+    archive:
+      path: "../python/*"
+      dest: "/tmp/ImageDownloder.zip"
+      format: zip
+    run_once: true
+    ignore_errors: yes
+    delegate_to: localhost
+    
+  - name: Copying the ImageDownloder to remote
+    copy:
+      src: "/tmp/ImageDownloder.zip"
+      dest: "/tmp/testzip/"
+    run_once: true
+    ignore_errors: yes
+    
+  - name: Unarchive ImageDownloder file on remote machine
+    unarchive:
+       src: "/tmp/testzip/ImageDownloder.zip"
+       dest: "/tmp/testzip/"
+       remote_src: yes
+    run_once: true
+    ignore_errors: yes
+    
+  - name: Install one pip3 
+    become: yes
+    become_user: root
+    yum:
+      name: python3-pip
+      state: present
+    run_once: true
+    ignore_errors: yes
+
+  - name: Installing from requirements.txt file 
+    shell: |
+     cd /tmp/testzip/
+     sudo pip3 install -r requirements.txt
+    register: pip_install
+    run_once: true
+    ignore_errors: yes
+
+  - name: Debug pip install collection
+    debug: var=pip_install
+    
+  - name: Copying the downpic in /usr/bin dir under tmp
+    become: yes
+    become_user: root 
+    copy:
+      src: "/tmp/testzip/downpic.py"
+      dest: "/usr/bin/"
+      mode: 0755
+      remote_src: yes
+    run_once: true
+    ignore_errors: yes
+
